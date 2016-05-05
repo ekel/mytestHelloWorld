@@ -52,4 +52,68 @@ int main()
     return 0;
 }
 
+// 发生阻塞的例子
+#define K 1024
+#define WRITELEN (128*K)
+int main()
+{
+    int fd[2] = {0};
+    int nbytes = 0;
+    char readbuffer[10 * K] = {0};
+    pid_t pid;
 
+    char str[WRITELEN] = "my name is kingstar, now it's FIS!\n ok, 阻塞开始了... ...";
+    int result = -1;
+    result = pipe(fd);
+    if (result == -1)
+    {
+        printf("failed to pipe!\n");
+        return -1;
+    }
+
+    pid = fork();
+    if (pid == -1)
+    {
+        printf("failed to fork!\n");
+        return -1;
+    }
+
+    if (pid == 0)   // son
+    {
+        close(fd[0]);
+
+        int size = WRITELEN;
+        while (size >= 0)	// =0的目的是为了让write执行两次
+        {
+            result = write(fd[1], str, WRITELEN);
+			printf("result=%d size=%d\n", result, size);
+            if (result > 0)
+            {
+			
+                size -= result;
+                printf("the son write %d bytes data, the rest is %d bytes\n", result, size);
+            }
+            else
+            {
+                sleep(10);
+            }
+        }
+        printf("son is over\n");
+        return 0;
+    }
+    else    // parent
+    {
+        close(fd[1]);
+        while (1)
+        {
+            nbytes = read(fd[0], readbuffer, sizeof(readbuffer));
+            if (nbytes <= 0)
+            {
+                printf("no data had writen \n");
+                break;
+            }
+            printf("recieve %d bytes data:%s \n", nbytes, readbuffer);
+        }
+    }
+    return 0;
+}
